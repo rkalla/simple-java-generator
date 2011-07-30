@@ -1,0 +1,105 @@
+Simple Java Generator (SJG)
+https://github.com/thebuzzmedia/simple-generator
+
+
+Changelog
+---------
+1.1
+	* Initial public release.
+
+
+License
+-------
+This library is released under the Apache 2 License. See LICENSE.
+
+
+Description
+-----------
+TBD
+
+
+Performance
+-----------
+Benchmarks can be reproduced by running the Benchmark class in the /src/test/java
+code tree.
+
+Benchmarks compare some of the most common approaches to Object->JSON and 
+Object->XML text generation; namely Gson for JSON and JAXB from Java 6 for XML.
+
+[Platform]
+* Java 1.6.0_24 on Windows 7 64-bit 
+* Dual Core Intel E6850 processor
+* 8 GB of ram
+
+==== Benchmarking 50000 iterations ====
+
+[JSON]
+	 Gson, Formatted... 8117 ms (8.117 secs - 6,159 ops/sec)
+	 Gson, Compact... 5515 ms (5.515 secs - 9,066 ops/sec)
+	 Simple Gen, Formatted... 1596 ms (1.596 secs - 31,328 ops/sec)
+	 Simple Gen, Compact... 602 ms (0.602 secs - 83,056 ops/sec)
+
+[XML]
+	 JAXB, Formatted... 2240 ms (2.24 secs - 22,321 ops/sec)
+	 JAXB, Compact... 1343 ms (1.343 secs - 37,230 ops/sec)
+	 Simple Gen, Formatted... 1640 ms (1.64 secs - 30,487 ops/sec)
+	 Simple Gen, Compact... 697 ms (0.697 secs - 71,736 ops/sec)
+
+
+
+Example
+-------
+
+TBD (note about IRecursable)
+ 
+
+How it Works
+------------
+TBD
+
+
+Memory/CPU Overhead
+-------------------
+TBD (note about indent and reflection caching)
+
+
+Runtime Requirements
+--------------------
+No library dependencies, just the Simple Java Generator JAR.
+
+
+History
+-------
+This project, like many others, was open-sourced from work on imgscalr.com.
+
+imgscalr.com is a REST API driven, image-hosting SaaS product. Interaction with
+the product is done almost exclusively via the web API. Generation of JSON, JSONP
+or XML from resulting query POJOs inside the system is the most common operation
+the deployed system performs so it has to be fast.
+
+After evaluating popular frameworks out there, I found some to be way too slow
+(Gson) and while other frameworks were fast (Jackson) the APIs made usage complex
+or the resulting output reflected from the POJO objects wasn't exactly what I 
+needed and customization was harder than I thought it should be.
+
+Wanting a straight forward, fast and *simple* approach was important, so SJG
+was written and open sourced to the community. 
+
+
+Troubleshooting
+---------------
+Here are some issues you might run into and what you can do to correct it.
+
+* Simple Java Generator isn't recursing into the custom member classes on my
+	POJO, it just prints out the toString() result!
+	
+	You probably forgot to have any and all custom POJO classes implement the
+	IRecursable interface. This interface "tags" custom classes as something that
+	SJG should use reflection to recurse into to pull values out of. Without it,
+	you are telling SJG to leave those classes alone.
+		 
+
+Contact
+-------
+If you have questions, comments or bug reports for this software please contact
+us at: software@thebuzzmedia.com

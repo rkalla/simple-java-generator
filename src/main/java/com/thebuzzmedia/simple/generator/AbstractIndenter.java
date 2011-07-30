@@ -24,7 +24,8 @@ import java.util.Map;
  * In addition to core indenter functionality, this class also automatically
  * implements caching of the generated indent by way of the provided
  * {@link #getIndent(Type, Position, int)} method which only calls the
- * user-specified {@link #getIndentImpl(Type, Position, int)} method when a
+ * user-specified
+ * {@link #getIndentImpl(IIndenter.Type, IIndenter.Position, int)} method when a
  * pre-created <code>char[]</code> indent for the same arguments cannot be found
  * in the internal indent cache.
  * <p/>
@@ -101,8 +102,9 @@ public abstract class AbstractIndenter implements IIndenter {
 	/**
 	 * Implemented to check an internal <code>char[]</code> cache for an
 	 * existing indentation for the same set of arguments and return it,
-	 * otherwise delegate to {@link #getIndentImpl(Type, Position, int)} to
-	 * create it.
+	 * otherwise delegate to
+	 * {@link #getIndentImpl(IIndenter.Type, IIndenter.Position, int)} to create
+	 * it.
 	 * <p/>
 	 * This method calculates if an existing cached <code>char[]</code> exists
 	 * for these arguments by using the following key as a lookup:
@@ -177,8 +179,8 @@ public abstract class AbstractIndenter implements IIndenter {
 	 * indentation in the internal indent cache.
 	 * <p/>
 	 * Results returned from this method are automatically cached and re-used.
-	 * Implementors do not need to implement caching logic in overrides of this
-	 * method.
+	 * Implementors do not need to implement caching logic in implementations of
+	 * this method.
 	 * 
 	 * @param type
 	 *            The type of element being indented.

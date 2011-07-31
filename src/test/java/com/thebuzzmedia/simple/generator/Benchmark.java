@@ -1,5 +1,6 @@
 package com.thebuzzmedia.simple.generator;
 
+import java.io.IOException;
 import java.io.OutputStream;
 
 import javax.xml.bind.JAXBContext;
@@ -12,7 +13,7 @@ import com.thebuzzmedia.simple.generator.Library.Book.Author;
 
 public class Benchmark {
 	private static final int ITERS = 50000;
-	private static OutputStream NULL = new NullOutputStream();
+	private static OutputStream NULL = new NoopOutputStream();
 
 	private static IGenerator json_simplegen = new JSONGenerator();
 	private static IGenerator xml_simplegen = new XMLGenerator();
@@ -185,5 +186,12 @@ public class Benchmark {
 		secs = (double) start / 1000;
 		System.out.println(start + " ms (" + secs + " secs - "
 				+ (int) (ITERS / secs) + " ops/sec)");
+	}
+
+	private static class NoopOutputStream extends OutputStream {
+		@Override
+		public void write(int b) throws IOException {
+			// no-op
+		}
 	}
 }

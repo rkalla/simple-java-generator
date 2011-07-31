@@ -1,7 +1,6 @@
 package com.thebuzzmedia.simple.generator;
 
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
@@ -28,7 +27,7 @@ public class Library implements IRecursable {
 		public String title;
 		public String isbn;
 		public Integer pageCount;
-		public Date printDate;
+		public Long printDate;
 		public List<Author> authors;
 		public Double replacementCost;
 
@@ -43,7 +42,7 @@ public class Library implements IRecursable {
 			this.title = title;
 			this.isbn = isbn;
 			this.pageCount = pageCount;
-			this.printDate = new Date(printDateMillis);
+			this.printDate = printDateMillis;
 			this.replacementCost = replacementCost;
 			this.authors = Arrays.asList(authors);
 		}
@@ -51,7 +50,7 @@ public class Library implements IRecursable {
 		public static class Author implements IRecursable {
 			public String firstName;
 			public String lastName;
-			public Date dob;
+			public Long dob;
 			public String amazonURL;
 
 			public Author() {
@@ -62,7 +61,7 @@ public class Library implements IRecursable {
 					String amazonURL) {
 				this.firstName = fName;
 				this.lastName = lName;
-				this.dob = new Date(dobMillis);
+				this.dob = dobMillis;
 				this.amazonURL = amazonURL;
 			}
 		}

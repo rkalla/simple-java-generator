@@ -5,6 +5,7 @@ import javax.xml.bind.Marshaller;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.thebuzzmedia.common.io.IInput;
 import com.thebuzzmedia.simple.generator.Library.Book;
 import com.thebuzzmedia.simple.generator.Library.Book.Author;
 
@@ -77,7 +78,8 @@ public class ExampleOutput {
 				.print("\nGson, Formatted\n===================================\n");
 		System.out.println(gson_fmt.toJson(library));
 
-		System.out.print("\nGson, Compact\n===================================\n");
+		System.out
+				.print("\nGson, Compact\n===================================\n");
 		System.out.println(gson_nofmt.toJson(library));
 	}
 
@@ -85,12 +87,16 @@ public class ExampleOutput {
 		System.out
 				.print("\nSimple Gen, Formatted\n===================================\n");
 		json_simplegen.setIndenter(JSONIndenter.INSTANCE);
-		System.out.println(json_simplegen.generate(library));
+		IInput<char[], char[]> output = json_simplegen.generate(library);
+		System.out
+				.println(new String(output.getSource(), 0, output.getLength()));
 
 		System.out
 				.print("\nSimple Gen, Compact\n===================================\n");
 		json_simplegen.setIndenter(CompactIndenter.INSTANCE);
-		System.out.println(json_simplegen.generate(library));
+		output = json_simplegen.generate(library);
+		System.out
+				.println(new String(output.getSource(), 0, output.getLength()));
 	}
 
 	private static void xml_jaxb() {
@@ -102,7 +108,8 @@ public class ExampleOutput {
 			e.printStackTrace();
 		}
 
-		System.out.print("\nJAXB, Compact\n===================================\n");
+		System.out
+				.print("\nJAXB, Compact\n===================================\n");
 		try {
 			jaxb_nofmt.marshal(library, System.out);
 		} catch (Exception e) {
@@ -114,11 +121,15 @@ public class ExampleOutput {
 		System.out
 				.print("\nSimple Gen, Formatted\n===================================\n");
 		xml_simplegen.setIndenter(XMLIndenter.INSTANCE);
-		System.out.println(xml_simplegen.generate(library));
+		IInput<char[], char[]> output = xml_simplegen.generate(library);
+		System.out
+				.println(new String(output.getSource(), 0, output.getLength()));
 
 		System.out
 				.print("\nSimple Gen, Compact\n===================================\n");
 		xml_simplegen.setIndenter(CompactIndenter.INSTANCE);
-		System.out.println(xml_simplegen.generate(library));
+		output = xml_simplegen.generate(library);
+		System.out
+				.println(new String(output.getSource(), 0, output.getLength()));
 	}
 }

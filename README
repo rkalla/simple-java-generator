@@ -4,6 +4,15 @@ https://github.com/thebuzzmedia/simple-java-generator
 
 Changelog
 ---------
+1.2
+	* Changed IGenerate.generate return type from a StringBuilder to an 
+	IInput<char[], char[]>. Allows much more optimized interaction with the
+	generated result (e.g. streaming) without needing to create a String or
+	char[] and copy the contents of the existing char[] again.
+	
+	* Optimized cached indent lookup calculation to avoid the new Integer 
+	creation.
+
 1.1
 	* Initial public release.
 
@@ -39,16 +48,16 @@ Object->XML text generation; namely Gson for JSON and JAXB from Java 6 for XML.
 ==== Benchmarking 50000 iterations ====
 
 [JSON]
-	 Gson, Formatted... 8117 ms (8.117 secs - 6,159 ops/sec)
-	 Gson, Compact... 5515 ms (5.515 secs - 9,066 ops/sec)
-	 Simple Gen, Formatted... 1596 ms (1.596 secs - 31,328 ops/sec)
-	 Simple Gen, Compact... 602 ms (0.602 secs - 83,056 ops/sec)
+	 Gson, Formatted... 7437 ms (7.437 secs - 6723 ops/sec)
+	 Gson, Compact... 5038 ms (5.038 secs - 9924 ops/sec)
+	 Simple Gen, Formatted... 1492 ms (1.492 secs - 33512 ops/sec)
+	 Simple Gen, Compact... 552 ms (0.552 secs - 90579 ops/sec)
 
 [XML]
-	 JAXB, Formatted... 2240 ms (2.24 secs - 22,321 ops/sec)
-	 JAXB, Compact... 1343 ms (1.343 secs - 37,230 ops/sec)
-	 Simple Gen, Formatted... 1640 ms (1.64 secs - 30,487 ops/sec)
-	 Simple Gen, Compact... 697 ms (0.697 secs - 71,736 ops/sec)
+	 JAXB, Formatted... 1555 ms (1.555 secs - 32154 ops/sec)
+	 JAXB, Compact... 954 ms (0.954 secs - 52410 ops/sec)
+	 Simple Gen, Formatted... 1918 ms (1.918 secs - 26068 ops/sec)
+	 Simple Gen, Compact... 701 ms (0.701 secs - 71326 ops/sec)
 
 
 
@@ -70,7 +79,8 @@ TBD (note about indent and reflection caching)
 
 Runtime Requirements
 --------------------
-No library dependencies, just the Simple Java Generator JAR.
+Requires
+	* tbm-common-lib-<VER>.jar
 
 
 History

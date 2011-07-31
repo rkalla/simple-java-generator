@@ -41,54 +41,63 @@ public class JSONGenerator extends AbstractGenerator {
 	}
 
 	@Override
-	protected void writeObjectOpen(String fieldName, boolean inList) {
+	protected void writeObjectOpen(String fieldName, int level, boolean inList) {
 		if (!inList && level > 1)
-			buffer.append('"').append(fieldName).append("\": ");
+			append('"').append(fieldName).append("\": ");
 
-		buffer.append('{');
+		append('{');
 	}
 
 	@Override
-	protected void writeObjectClose(String fieldName, boolean inList) {
-		buffer.append('}');
+	protected void writeObjectClose(String fieldName, int level, boolean inList) {
+		append('}');
 	}
 
 	@Override
-	protected void writeListOpen(String fieldName, boolean inList) {
-		buffer.append('"').append(fieldName).append("\": [");
+	protected void writeListOpen(String fieldName, int level, boolean inList) {
+		append('"').append(fieldName).append("\": [");
 	}
 
 	@Override
-	protected void writeListClose(String fieldName, boolean inList) {
-		buffer.append(']');
+	protected void writeListClose(String fieldName, int level, boolean inList) {
+		append(']');
 	}
 
 	@Override
 	protected void writeListSeparator() {
-		buffer.append(',');
+		append(',');
 	}
 
 	@Override
-	protected void writeBoolean(String fieldName, Boolean value, boolean inList) {
+	protected void writeBoolean(String fieldName, Boolean value, int level,
+			boolean inList) {
 		if (!inList)
-			buffer.append('"').append(fieldName).append("\": ");
+			append('"').append(fieldName).append("\": ");
 
-		buffer.append(value);
+		if (value != null) {
+			if (value.booleanValue())
+				append(BOOLEAN_TRUE);
+			else
+				append(BOOLEAN_FALSE);
+		}
 	}
 
 	@Override
-	protected void writeNumber(String fieldName, Number value, boolean inList) {
+	protected void writeNumber(String fieldName, Number value, int level,
+			boolean inList) {
 		if (!inList)
-			buffer.append('"').append(fieldName).append("\": ");
+			append('"').append(fieldName).append("\": ");
 
-		buffer.append(value);
+		if (value != null)
+			append(value.toString());
 	}
 
 	@Override
-	protected void writeString(String fieldName, String value, boolean inList) {
+	protected void writeString(String fieldName, String value, int level,
+			boolean inList) {
 		if (!inList)
-			buffer.append('"').append(fieldName).append("\": ");
+			append('"').append(fieldName).append("\": ");
 
-		buffer.append('"').append(value).append('"');
+		append('"').append(value).append('"');
 	}
 }

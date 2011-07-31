@@ -15,9 +15,6 @@
  */
 package com.thebuzzmedia.simple.generator;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * Default base implementation of an {@link IIndenter}.
  * <p/>

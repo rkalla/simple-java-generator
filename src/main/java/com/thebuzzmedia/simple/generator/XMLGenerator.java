@@ -41,23 +41,23 @@ public class XMLGenerator extends AbstractGenerator {
 	}
 
 	@Override
-	protected void writeObjectOpen(String fieldName, boolean inList) {
-		buffer.append('<').append(fieldName).append('>');
+	protected void writeObjectOpen(String fieldName, int level, boolean inList) {
+		append('<').append(fieldName).append('>');
 	}
 
 	@Override
-	protected void writeObjectClose(String fieldName, boolean inList) {
-		buffer.append("</").append(fieldName).append('>');
+	protected void writeObjectClose(String fieldName, int level, boolean inList) {
+		append("</").append(fieldName).append('>');
 	}
 
 	@Override
-	protected void writeListOpen(String fieldName, boolean inList) {
-		buffer.append('<').append(fieldName).append('>');
+	protected void writeListOpen(String fieldName, int level, boolean inList) {
+		append('<').append(fieldName).append('>');
 	}
 
 	@Override
-	protected void writeListClose(String fieldName, boolean inList) {
-		buffer.append("</").append(fieldName).append('>');
+	protected void writeListClose(String fieldName, int level, boolean inList) {
+		append("</").append(fieldName).append('>');
 	}
 
 	@Override
@@ -66,20 +66,35 @@ public class XMLGenerator extends AbstractGenerator {
 	}
 
 	@Override
-	protected void writeBoolean(String fieldName, Boolean value, boolean inList) {
-		buffer.append('<').append(fieldName).append('>').append(value)
-				.append("</").append(fieldName).append('>');
+	protected void writeBoolean(String fieldName, Boolean value, int level,
+			boolean inList) {
+		append('<').append(fieldName).append('>');
+
+		if (value != null) {
+			if (value.booleanValue())
+				append(BOOLEAN_TRUE);
+			else
+				append(BOOLEAN_FALSE);
+		}
+
+		append("</").append(fieldName).append('>');
 	}
 
 	@Override
-	protected void writeNumber(String fieldName, Number value, boolean inList) {
-		buffer.append('<').append(fieldName).append('>').append(value)
-				.append("</").append(fieldName).append('>');
+	protected void writeNumber(String fieldName, Number value, int level,
+			boolean inList) {
+		append('<').append(fieldName).append('>');
+
+		if (value != null)
+			append(value.toString());
+
+		append("</").append(fieldName).append('>');
 	}
 
 	@Override
-	protected void writeString(String fieldName, String value, boolean inList) {
-		buffer.append('<').append(fieldName).append('>').append(value)
-				.append("</").append(fieldName).append('>');
+	protected void writeString(String fieldName, String value, int level,
+			boolean inList) {
+		append('<').append(fieldName).append('>').append(value).append("</")
+				.append(fieldName).append('>');
 	}
 }

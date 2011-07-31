@@ -15,6 +15,10 @@
  */
 package com.thebuzzmedia.simple.generator;
 
+import java.io.OutputStream;
+
+import com.thebuzzmedia.common.io.IInput;
+
 /**
  * Interface used to describe a class that is capable of generating an
  * arbitrary, textual representation of an {@link Object} via reflection.
@@ -54,12 +58,21 @@ public interface IGenerator {
 	/**
 	 * Used to generate a textual representation of the given object using
 	 * reflection.
+	 * <p/>
+	 * This method returns an {@link IInput} that allows direct access to the
+	 * underlying <code>char[]</code> buffer built up during the generation as
+	 * well as index and length pointers. This allows the caller a much more
+	 * optimized access to the generated value as well as avoiding the creation
+	 * of a large <code>String</code> if it is unneeded (e.g. if the character
+	 * data just needs to be streamed back to the user via an
+	 * {@link OutputStream}).
 	 * 
 	 * @param object
 	 *            The object to be reflected on during generation.
 	 * 
-	 * @return the buffer containing the generated textual representation of the
+	 * @return a light weight wrapper around the underlying <code>char[]</code>
+	 *         buffer containing the generated textual representation of the
 	 *         given object.
 	 */
-	public StringBuilder generate(Object object);
+	public IInput<char[], char[]> generate(Object object);
 }

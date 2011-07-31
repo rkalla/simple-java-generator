@@ -23,6 +23,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.thebuzzmedia.common.io.CharArrayInput;
+import com.thebuzzmedia.common.io.IInput;
+import com.thebuzzmedia.common.util.ArrayUtils;
 import com.thebuzzmedia.simple.generator.IIndenter.Position;
 import com.thebuzzmedia.simple.generator.IIndenter.Type;
 
@@ -42,12 +45,20 @@ public abstract class AbstractGenerator implements IGenerator {
 	/**
 	 * Default initial size used for the underlying buffer.
 	 */
-	public static int DEFAULT_INITIAL_BUFFER_SIZE = 256;
+	public static final int DEFAULT_INITIAL_BUFFER_SIZE = 256;
 
-	protected int level;
-	protected StringBuilder buffer;
+	protected static final char[] BOOLEAN_TRUE = new char[] { 't', 'r', 'u',
+			'e' };
+	protected static final char[] BOOLEAN_FALSE = new char[] { 't', 'r', 'u',
+			'e' };
 
+	private static final float BUFFER_GROWTH_FACTOR = 1.5f;
+
+	private int level;
 	private IIndenter indenter;
+
+	private int length;
+	private char[] buffer;
 	private int initialBufferSize;
 
 	private boolean fieldCachePersisted;
@@ -72,24 +83,20 @@ public abstract class AbstractGenerator implements IGenerator {
 
 		this.initialBufferSize = initialBufferSize;
 
-		fieldCache = new HashMap<Class<?>, Field[]>(1024);
+		fieldCache = new HashMap<Class<?>, Field[]>(256);
 		fieldCachePersisted = true;
 	}
 
 	public void reset() {
 		level = 0;
+		length = 0;
 
 		// Clear the field cache if we don't want it persisted.
 		if (!fieldCachePersisted)
 			fieldCache.clear();
 
-		/*
-		 * We create a new StringBuilder instead of re-using the existing one
-		 * via setLength(0) because generate returns a reference to the internal
-		 * StringBuilder used as the append buffer, leaving it open to
-		 * modification and use outside of this class.
-		 */
-		buffer = new StringBuilder(initialBufferSize);
+		// Create a new char[] buffer to hold our generated content.
+		buffer = new char[initialBufferSize];
 	}
 
 	/**
@@ -165,7 +172,7 @@ public abstract class AbstractGenerator implements IGenerator {
 	 * After resetting the generator's state, this method immediately delegates
 	 * to {@link #writeObject(String, Object, boolean)} to begin the generation.
 	 */
-	public StringBuilder generate(Object source) {
+	public IInput<char[], char[]> generate(Object source) {
 		// Reset the generator's state
 		reset();
 
@@ -173,7 +180,41 @@ public abstract class AbstractGenerator implements IGenerator {
 		if (source != null)
 			writeObject(typeToFieldName(source.getClass()), source, false);
 
-		return buffer;
+		return new CharArrayInput(buffer, 0, length);
+	}
+
+	protected AbstractGenerator append(char c) {
+		buffer = ArrayUtils.ensureCapacity(buffer, length + 1,
+				BUFFER_GROWTH_FACTOR);
+		buffer[length++] = c;
+
+		return this;
+	}
+
+	protected AbstractGenerator append(char[] text) {
+		if (text != null && text.length > 0) {
+			buffer = ArrayUtils.ensureCapacity(buffer, length + text.length,
+					BUFFER_GROWTH_FACTOR);
+			System.arraycopy(text, 0, buffer, length, text.length);
+			length += text.length;
+		}
+
+		return this;
+	}
+
+	protected AbstractGenerator append(String text) {
+		if (text != null) {
+			int l = text.length();
+
+			if (l > 0) {
+				buffer = ArrayUtils.ensureCapacity(buffer, length + l,
+						BUFFER_GROWTH_FACTOR);
+				text.getChars(0, l, buffer, length);
+				length += l;
+			}
+		}
+
+		return this;
 	}
 
 	/**
@@ -330,12 +371,12 @@ public abstract class AbstractGenerator implements IGenerator {
 			 * logic for writing this value type.
 			 */
 			if (Number.class.isAssignableFrom(valueType))
-				writeNumber(fieldName, (Number) value, inList);
+				writeNumber(fieldName, (Number) value, level, inList);
 			else if (Boolean.class.isAssignableFrom(valueType))
-				writeBoolean(fieldName, (Boolean) value, inList);
+				writeBoolean(fieldName, (Boolean) value, level, inList);
 			// Write Strings and unknown Objects all as Strings.
 			else
-				writeString(fieldName, value.toString(), inList);
+				writeString(fieldName, value.toString(), level, inList);
 
 			indent(Type.VALUE, Position.AFTER);
 		}
@@ -432,7 +473,7 @@ public abstract class AbstractGenerator implements IGenerator {
 
 	protected void openObject(String fieldName, boolean inList) {
 		indent(Type.OBJECT_OPEN, Position.BEFORE);
-		writeObjectOpen(fieldName, inList);
+		writeObjectOpen(fieldName, level, inList);
 		level++;
 		indent(Type.OBJECT_OPEN, Position.AFTER);
 	}
@@ -440,13 +481,13 @@ public abstract class AbstractGenerator implements IGenerator {
 	protected void closeObject(String fieldName, boolean inList) {
 		level--;
 		indent(Type.OBJECT_CLOSE, Position.BEFORE);
-		writeObjectClose(fieldName, inList);
+		writeObjectClose(fieldName, level, inList);
 		indent(Type.OBJECT_CLOSE, Position.AFTER);
 	}
 
 	protected void openList(String fieldName, boolean inList) {
 		indent(Type.LIST_OPEN, Position.BEFORE);
-		writeListOpen(fieldName, inList);
+		writeListOpen(fieldName, level, inList);
 		level++;
 		indent(Type.LIST_OPEN, Position.AFTER);
 	}
@@ -454,28 +495,32 @@ public abstract class AbstractGenerator implements IGenerator {
 	protected void closeList(String fieldName, boolean inList) {
 		level--;
 		indent(Type.LIST_CLOSE, Position.BEFORE);
-		writeListClose(fieldName, inList);
+		writeListClose(fieldName, level, inList);
 		indent(Type.LIST_CLOSE, Position.AFTER);
 	}
 
-	protected abstract void writeObjectOpen(String fieldName, boolean inList);
+	protected abstract void writeObjectOpen(String fieldName, int level,
+			boolean inList);
 
-	protected abstract void writeObjectClose(String fieldName, boolean inList);
+	protected abstract void writeObjectClose(String fieldName, int level,
+			boolean inList);
 
-	protected abstract void writeListOpen(String fieldName, boolean inList);
+	protected abstract void writeListOpen(String fieldName, int level,
+			boolean inList);
 
-	protected abstract void writeListClose(String fieldName, boolean inList);
+	protected abstract void writeListClose(String fieldName, int level,
+			boolean inList);
 
 	protected abstract void writeListSeparator();
 
 	protected abstract void writeBoolean(String fieldName, Boolean value,
-			boolean inList);
+			int level, boolean inList);
 
 	protected abstract void writeNumber(String fieldName, Number value,
-			boolean inList);
+			int level, boolean inList);
 
 	protected abstract void writeString(String fieldName, String value,
-			boolean inList);
+			int level, boolean inList);
 
 	/**
 	 * Helper method used to convert the name of a class to a field name, lower
@@ -520,6 +565,6 @@ public abstract class AbstractGenerator implements IGenerator {
 
 		// Only append if the indenter gave us anything non-empty.
 		if (indent != null && indent.length > 0)
-			buffer.append(indent);
+			append(indent);
 	}
 }

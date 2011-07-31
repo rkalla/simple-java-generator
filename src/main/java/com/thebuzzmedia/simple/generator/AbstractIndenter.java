@@ -57,7 +57,8 @@ public abstract class AbstractIndenter implements IIndenter {
 
 	private Mode mode;
 	private int indentMultiple;
-	private Map<Integer, char[]> indentCache;
+
+	private char[][] cache;
 
 	public AbstractIndenter() {
 		this(DEFAULT_MODE);
@@ -72,7 +73,7 @@ public abstract class AbstractIndenter implements IIndenter {
 		setMode(mode);
 		setIndentMultiple(indentMultiple);
 
-		indentCache = new HashMap<Integer, char[]>(64);
+		cache = new char[128][];
 	}
 
 	public Mode getMode() {
@@ -123,16 +124,20 @@ public abstract class AbstractIndenter implements IIndenter {
 			throw new IllegalArgumentException("level must be >= 0");
 
 		// Calculate the cache lookup key
-		Integer key = Integer.valueOf(type.hashCode() + position.hashCode()
-				+ level);
+		int key = (type.hashCode() + position.hashCode() + level)
+				% cache.length;
+
+		// Protect from overflow.
+		if (key < 0)
+			key = -key;
 
 		// Attempt to pull an indent from the cache
-		char[] indent = indentCache.get(key);
+		char[] indent = cache[key];
 
 		// If the indent wasn't cached, calculate it and cache it.
 		if (indent == null) {
 			indent = getIndentImpl(type, position, level);
-			indentCache.put(key, indent);
+			cache[key] = indent;
 		}
 
 		return indent;

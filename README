@@ -4,6 +4,40 @@ https://github.com/thebuzzmedia/simple-java-generator
 
 Changelog
 ---------
+2.0
+	* Major release
+	
+	* Support for generating text for arrays was added. This follows the same 
+	code-path as List generation so existing stubs for list generating is automatically
+	used with no extra work.
+	
+	* Remove IRecursable interface and replaced it with @Recursable annotation.
+	Annotate any POJO classes that you want Simple Generator to recurse on during
+	generation with this.
+	
+	* Added @Encode annotation for String fields on POJOs to indicate 3 different
+	kinds of encoding Simple Generator can do to the values automatically for
+	you:
+	
+	  * URL - URL-encode the String
+	  * BASE64 - Base64-encode the String
+	  * URL_SAFE_BASE64 - Use a URL-safe Base64-encoding for the String.
+	  
+	Usage is straight forward, for example:
+	@Encode(Type.URL) String url; 
+	
+	* AbstractGenerator was rewritten to allow more robust value handling and
+	cleaner execution with less cycles.
+	
+	* The introduction of annotation processing cut the raw performance of the
+	library in half (even with guard-blocks to avoid calling into the 
+	AnnotationProcessor), but the overall speed is still 3x faster than other
+	popular libraries like GSON.
+	
+	The usability of the library was boosted quite a bit, and performance is still
+	in the range of 15 generation ops/millisecond or almost 28,000 ops/sec from
+	the Benchmark class.
+
 1.2
 	* Changed IGenerate.generate return type from a StringBuilder to an 
 	IInput<char[], char[]>. Allows much more optimized interaction with the
@@ -24,7 +58,22 @@ This library is released under the Apache 2 License. See LICENSE.
 
 Description
 -----------
-TBD
+Simple Java Generator is a simple, reflection-based, text generation library for
+Java. Out of the box, SJG provides generators for JSON and XML and support for
+generated a formatted (pretty-printed) or compact version of those formats.
+
+Simple Java Generator supports all the basic value types in Java, all Collection
+types and arrays as well as recursively generating output for custom object types
+marked with the @Recursable annotation.
+
+Extending SJG to generate other file types is trivial; extending AbstractGenerator
+gives you 8 or so, 1 or 2 line stub methods that need to be given logic on what
+text to append(...) to the running output buffer. All reflection, type determination
+and pre-processing/vetting of values is handled by AbstractGenerator.
+
+You can see an example of how simple end-user implementations are by glancing at
+the source for JSONGenerator or XMLGenerator; any custom generator you write will
+roughly as simple (file format allowing).
 
 
 Performance
@@ -48,17 +97,16 @@ Object->XML text generation; namely Gson for JSON and JAXB from Java 6 for XML.
 ==== Benchmarking 50000 iterations ====
 
 [JSON]
-	 Gson, Formatted... 7437 ms (7.437 secs - 6723 ops/sec)
-	 Gson, Compact... 5038 ms (5.038 secs - 9924 ops/sec)
-	 Simple Gen, Formatted... 1492 ms (1.492 secs - 33512 ops/sec)
-	 Simple Gen, Compact... 552 ms (0.552 secs - 90579 ops/sec)
+	 Gson, Formatted... 7886 ms (7.886 secs - 6340 ops/sec)
+	 Gson, Compact... 5199 ms (5.199 secs - 9617 ops/sec)
+	 Simple Gen, Formatted... 2789 ms (2.789 secs - 17927 ops/sec)
+	 Simple Gen, Compact... 1800 ms (1.8 secs - 27777 ops/sec)
 
 [XML]
-	 JAXB, Formatted... 1555 ms (1.555 secs - 32154 ops/sec)
-	 JAXB, Compact... 954 ms (0.954 secs - 52410 ops/sec)
-	 Simple Gen, Formatted... 1918 ms (1.918 secs - 26068 ops/sec)
-	 Simple Gen, Compact... 701 ms (0.701 secs - 71326 ops/sec)
-
+	 JAXB, Formatted... 1565 ms (1.565 secs - 31948 ops/sec)
+	 JAXB, Compact... 1014 ms (1.014 secs - 49309 ops/sec)
+	 Simple Gen, Formatted... 3401 ms (3.401 secs - 14701 ops/sec)
+	 Simple Gen, Compact... 1953 ms (1.953 secs - 25601 ops/sec)
 
 
 Example

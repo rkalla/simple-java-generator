@@ -1,22 +1,9 @@
-/**   
- * Copyright 2011 The Buzz Media, LLC
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.thebuzzmedia.simple.generator;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,8 +13,11 @@ import java.util.Map;
 import com.thebuzzmedia.common.io.CharArrayInput;
 import com.thebuzzmedia.common.io.IInput;
 import com.thebuzzmedia.common.util.ArrayUtils;
+import com.thebuzzmedia.common.util.Base64;
 import com.thebuzzmedia.simple.generator.IIndenter.Position;
 import com.thebuzzmedia.simple.generator.IIndenter.Type;
+import com.thebuzzmedia.simple.generator.annotation.Encode;
+import com.thebuzzmedia.simple.generator.annotation.Recursable;
 
 /**
  * Class used to provide the base implementation of a reflection-based
@@ -42,17 +32,12 @@ import com.thebuzzmedia.simple.generator.IIndenter.Type;
  * @since 1.1
  */
 public abstract class AbstractGenerator implements IGenerator {
-	/**
-	 * Default initial size used for the underlying buffer.
-	 */
-	public static final int DEFAULT_INITIAL_BUFFER_SIZE = 256;
-
-	protected static final char[] BOOLEAN_TRUE = new char[] { 't', 'r', 'u',
-			'e' };
-	protected static final char[] BOOLEAN_FALSE = new char[] { 't', 'r', 'u',
-			'e' };
-
+	private static final int DEFAULT_BUFFER_SIZE = 256;
 	private static final float BUFFER_GROWTH_FACTOR = 1.5f;
+
+	private static final char[] BOOLEAN_TRUE = new char[] { 't', 'r', 'u', 'e' };
+	private static final char[] BOOLEAN_FALSE = new char[] { 'f', 'a', 'l',
+			's', 'e' };
 
 	private int level;
 	private IIndenter indenter;
@@ -70,7 +55,7 @@ public abstract class AbstractGenerator implements IGenerator {
 
 	public AbstractGenerator(IIndenter indenter)
 			throws IllegalArgumentException {
-		this(indenter, DEFAULT_INITIAL_BUFFER_SIZE);
+		this(indenter, DEFAULT_BUFFER_SIZE);
 	}
 
 	public AbstractGenerator(IIndenter indenter, int initialBufferSize)
@@ -164,21 +149,15 @@ public abstract class AbstractGenerator implements IGenerator {
 		this.indenter = indenter;
 	}
 
-	/**
-	 * Used to begin the text generation step if <code>source</code> is not
-	 * <code>null</code> by reflecting on the <code>public</code> fields of the
-	 * given {@link Object}.
-	 * <p/>
-	 * After resetting the generator's state, this method immediately delegates
-	 * to {@link #writeObject(String, Object, boolean)} to begin the generation.
-	 */
-	public IInput<char[], char[]> generate(Object source) {
+	public IInput<char[], char[]> generate(Object object) {
 		// Reset the generator's state
 		reset();
 
 		// Ensure there is work to be done.
-		if (source != null)
-			writeObject(typeToFieldName(source.getClass()), source, false);
+		if (object != null) {
+			Class<?> type = object.getClass();
+			writeDispatcher(typeToName(type), type, null, object, false);
+		}
 
 		return new CharArrayInput(buffer, 0, length);
 	}
@@ -217,286 +196,47 @@ public abstract class AbstractGenerator implements IGenerator {
 		return this;
 	}
 
-	/**
-	 * Used to recurse on the given <code>value</code>, processing only its
-	 * <code>public</code> fields (inherited or otherwise).
-	 * <p/>
-	 * This method provides the entry point into reflection-based generation in
-	 * that the {@link Field}s are pulled from the given <code>value</code> and
-	 * processed by {@link #writeValue(String, Class, Object, boolean)} as long
-	 * as they are <code>public</code> and not <code>static</code>,
-	 * <code>transient</code> or synthetic.
-	 * <p/>
-	 * Fields with <code>null</code> values are skipped per the common contract
-	 * seen in other generator frameworks.
-	 * 
-	 * @param fieldName
-	 *            The name of the field; this is used as the label for the value
-	 *            in generation.
-	 * @param value
-	 *            The {@link Object} value to recurse on.
-	 * @param inList
-	 *            Used to indicate if this object is being rendered within the
-	 *            scope of a list, as this can change the rendering behavior for
-	 *            some format types (e.g. JSON).
-	 * 
-	 * @throws IllegalArgumentException
-	 *             if <code>fieldName</code> is <code>null</code> or if
-	 *             <code>value</code> is <code>null</code>.
-	 */
-	protected void writeObject(String fieldName, Object value, boolean inList)
-			throws IllegalArgumentException {
-		if (fieldName == null)
-			throw new IllegalArgumentException("fieldName cannot be null");
-		if (value == null)
-			throw new IllegalArgumentException("value cannot be null");
-
-		openObject(fieldName, inList);
-
-		Class<?> valueType = value.getClass();
-
-		// Check if we already have the fields cached for this class.
-		Field[] fields = fieldCache.get(valueType);
-
-		// Check if the fields for this type were already cached.
-		if (fields == null) {
-			// Get all public, inherited fields for the class.
-			fields = valueType.getFields();
-
-			// Cache the fields for this type incase we parse it again later.
-			fieldCache.put(valueType, fields);
-		}
-
-		// Process the object's fields and values.
-		for (int i = 0, lastSepIdx = (fields.length - 1); i < fields.length; i++) {
-			Field field = fields[i];
-
-			int mods = field.getModifiers();
-
-			// Skip static, transient or synthetic fields.
-			if (Modifier.isStatic(mods) || Modifier.isTransient(mods)
-					|| field.isSynthetic())
-				continue;
-
-			Object fieldValue = null;
-
-			try {
-				// Get the field's value.
-				fieldValue = field.get(value);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-
-			/*
-			 * Either our get(value) call failed above or this field has no
-			 * value associated with it.
-			 * 
-			 * Skip fields with null values per typical generation library
-			 * behavior in other well-deployed projects (e.g. GSON). This also
-			 * makes the following generation code cleaner.
-			 */
-			if (fieldValue == null)
-				continue;
-
-			// Determine the type of the field.
-			Class<?> fieldType = field.getType();
-
-			/*
-			 * For primitive field types, the type returned from field.getType()
-			 * is an empty stub Class with a name representing the primitive
-			 * type and nothing else.
-			 * 
-			 * Calling fieldValue.getClass() returns the actual wrapper class of
-			 * the primitive type which is needed by writeValue to accurately
-			 * decide which write method to call.
-			 */
-			if (fieldType.isPrimitive() && value != null)
-				fieldType = fieldValue.getClass();
-
-			// Recurse on the field value
-			writeValue(field.getName(), fieldType, fieldValue, false);
-
-			// Append the list separator (if there is one) between items.
-			if (i < lastSepIdx)
-				writeListSeparator();
-		}
-
-		closeObject(fieldName, inList);
-	}
-
-	/**
-	 * Used to determine the best way to actually write a reflected field name
-	 * and its associated value from an object based on its type.
-	 * 
-	 * @param fieldName
-	 *            The name to label the value with in the generation.
-	 * @param valueType
-	 *            The type of the field.
-	 * @param value
-	 *            The value of the field.
-	 * @param inList
-	 *            Used to indicate if this value is being generated inside of a
-	 *            list or not. This can effect how values are rendered in some
-	 *            file formats (e.g. JSON).
-	 * 
-	 * @throws IllegalArgumentException
-	 *             if <code>fieldName</code> is <code>null</code> or if
-	 *             <code>valueType</code> is <code>null</code>.
-	 */
-	protected void writeValue(String fieldName, Class<?> valueType,
-			Object value, boolean inList) throws IllegalArgumentException {
-		if (fieldName == null)
-			throw new IllegalArgumentException("fieldName cannot be null");
-		if (valueType == null)
-			throw new IllegalArgumentException("valueType cannot be null");
-
-		// Recurse on the object if it is tagged as recurseable.
-		if (IRecursable.class.isAssignableFrom(valueType))
-			writeObject(fieldName, value, inList);
-		/*
-		 * Specialized writers for lists, arrays and maps, otherwise if it is
-		 * any other collection type, delegate to the Iterator-based collection
-		 * writer.
-		 */
-		else if (List.class.isAssignableFrom(valueType))
-			writeList(fieldName, (List<?>) value, inList);
-		else if (Collection.class.isAssignableFrom(valueType))
-			writeCollection(fieldName, (Collection<?>) value, inList);
-		else {
-			indent(Type.VALUE, Position.BEFORE);
-
-			/*
-			 * We have a normal name/value pair to write; determine the most
-			 * accurate writer for it and delegate to the implementors custom
-			 * logic for writing this value type.
-			 */
-			if (Number.class.isAssignableFrom(valueType))
-				writeNumber(fieldName, (Number) value, level, inList);
-			else if (Boolean.class.isAssignableFrom(valueType))
-				writeBoolean(fieldName, (Boolean) value, level, inList);
-			// Write Strings and unknown Objects all as Strings.
+	protected AbstractGenerator append(Boolean value) {
+		if (value != null) {
+			if (value.booleanValue())
+				append(BOOLEAN_TRUE);
 			else
-				writeString(fieldName, value.toString(), level, inList);
-
-			indent(Type.VALUE, Position.AFTER);
-		}
-	}
-
-	/**
-	 * Used to write the values of a {@link List} as... well... a list.
-	 * 
-	 * @param fieldName
-	 *            The name of the list.
-	 * @param list
-	 *            The list that will have its elements written out.
-	 * @param inList
-	 *            Used to indicate if this list is a list within a list (may
-	 *            effect rendering of the list).
-	 * 
-	 * @throws IllegalArgumentException
-	 *             <code>fieldName</code> is <code>null</code>.
-	 */
-	protected void writeList(String fieldName, List<?> list, boolean inList)
-			throws IllegalArgumentException {
-		if (fieldName == null)
-			throw new IllegalArgumentException("fieldName cannot be null");
-
-		openList(fieldName, inList);
-
-		// Check if we have any work to do on the list.
-		if (list != null && !list.isEmpty()) {
-			// Process every element in the list.
-			for (int i = 0, size = list.size(), lastSepIdx = size - 1; i < size; i++) {
-				Object item = list.get(i);
-				Class<?> clazz = item.getClass();
-
-				/*
-				 * Delegate to the value writer logic for each element, ensuring
-				 * we let the writer know we are inside of a list.
-				 */
-				writeValue(typeToFieldName(clazz), clazz, item, true);
-
-				/*
-				 * Append list item separator and indent as long as we are not
-				 * on the last element in the list.
-				 */
-				if (i < lastSepIdx) {
-					writeListSeparator();
-					indent(Type.LIST_ITEM, Position.AFTER);
-				}
-			}
+				append(BOOLEAN_FALSE);
 		}
 
-		closeList(fieldName, inList);
+		return this;
 	}
 
-	/**
-	 * Generic fallback method used to write the values of any
-	 * {@link Collection} in the form of a list.
-	 * 
-	 * @param fieldName
-	 *            The label of the collection.
-	 * @param collection
-	 *            The collection that will have its elements written out.
-	 * @param inList
-	 *            Used to indicate if this list is a list within a list (may
-	 *            effect rendering of the list).
-	 * 
-	 * @throws IllegalArgumentException
-	 *             <code>fieldName</code> is <code>null</code>.
-	 */
-	protected void writeCollection(String fieldName, Collection<?> collection,
-			boolean inList) throws IllegalArgumentException {
-		if (fieldName == null)
-			throw new IllegalArgumentException("fieldName cannot be null");
+	protected AbstractGenerator append(Number value) {
+		if (value != null) {
+			String text = null;
 
-		openList(fieldName, inList);
+			/*
+			 * This is done instead of Number.toString() to avoid the 4 or 5
+			 * levels of redirection that Number.toString() invokes, bouncing
+			 * between abstract class toString methods to String.valueOf back to
+			 * the concrete wrapper classes toString(val) methods.
+			 * 
+			 * We short circuit all that bouncing and go directly to the end
+			 * method call below.
+			 */
+			if (value instanceof Integer)
+				text = Integer.toString(((Integer) value).intValue());
+			else if (value instanceof Double)
+				text = Double.toString(((Double) value).doubleValue());
+			else if (value instanceof Long)
+				text = Long.toString(((Long) value).longValue());
+			else if (value instanceof Float)
+				text = Float.toString(((Float) value).floatValue());
+			else if (value instanceof Byte)
+				text = Byte.toString(((Byte) value).byteValue());
+			else if (value instanceof Short)
+				text = Short.toString(((Short) value).shortValue());
 
-		if (collection != null) {
-			Iterator<?> elements = collection.iterator();
-
-			while (elements.hasNext()) {
-				Object item = elements.next();
-				Class<?> clazz = item.getClass();
-
-				writeValue(typeToFieldName(clazz), clazz, item, true);
-
-				if (elements.hasNext()) {
-					writeListSeparator();
-					indent(Type.LIST_ITEM, Position.AFTER);
-				}
-			}
+			append(text);
 		}
 
-		closeList(fieldName, inList);
-	}
-
-	protected void openObject(String fieldName, boolean inList) {
-		indent(Type.OBJECT_OPEN, Position.BEFORE);
-		writeObjectOpen(fieldName, level, inList);
-		level++;
-		indent(Type.OBJECT_OPEN, Position.AFTER);
-	}
-
-	protected void closeObject(String fieldName, boolean inList) {
-		level--;
-		indent(Type.OBJECT_CLOSE, Position.BEFORE);
-		writeObjectClose(fieldName, level, inList);
-		indent(Type.OBJECT_CLOSE, Position.AFTER);
-	}
-
-	protected void openList(String fieldName, boolean inList) {
-		indent(Type.LIST_OPEN, Position.BEFORE);
-		writeListOpen(fieldName, level, inList);
-		level++;
-		indent(Type.LIST_OPEN, Position.AFTER);
-	}
-
-	protected void closeList(String fieldName, boolean inList) {
-		level--;
-		indent(Type.LIST_CLOSE, Position.BEFORE);
-		writeListClose(fieldName, level, inList);
-		indent(Type.LIST_CLOSE, Position.AFTER);
+		return this;
 	}
 
 	protected abstract void writeObjectOpen(String fieldName, int level,
@@ -522,11 +262,16 @@ public abstract class AbstractGenerator implements IGenerator {
 	protected abstract void writeString(String fieldName, String value,
 			int level, boolean inList);
 
-	/**
-	 * Helper method used to convert the name of a class to a field name, lower
-	 * casing the first character.
-	 */
-	private String typeToFieldName(Class<?> type) {
+	private void indent(Type type, Position position) {
+		// Get the indent for the current type and position.
+		char[] indent = indenter.getIndent(type, position, level);
+
+		// Only append if the indenter gave us anything non-empty.
+		if (indent != null && indent.length > 0)
+			append(indent);
+	}
+
+	private String typeToName(Class<?> type) {
 		String name = null;
 
 		if (type != null) {
@@ -555,16 +300,281 @@ public abstract class AbstractGenerator implements IGenerator {
 		return name;
 	}
 
-	/**
-	 * Helper method used to apply the current indent level to the given type
-	 * and position and append it to the existing buffer.
-	 */
-	private void indent(Type type, Position position) {
-		// Get the indent for the current type and position.
-		char[] indent = indenter.getIndent(type, position, level);
+	private void openObject(String fieldName, boolean inList) {
+		indent(Type.OBJECT_OPEN, Position.BEFORE);
+		writeObjectOpen(fieldName, level, inList);
+		level++;
+		indent(Type.OBJECT_OPEN, Position.AFTER);
+	}
 
-		// Only append if the indenter gave us anything non-empty.
-		if (indent != null && indent.length > 0)
-			append(indent);
+	private void closeObject(String fieldName, boolean inList) {
+		level--;
+		indent(Type.OBJECT_CLOSE, Position.BEFORE);
+		writeObjectClose(fieldName, level, inList);
+		indent(Type.OBJECT_CLOSE, Position.AFTER);
+	}
+
+	private void openList(String fieldName, boolean inList) {
+		indent(Type.LIST_OPEN, Position.BEFORE);
+		writeListOpen(fieldName, level, inList);
+		level++;
+		indent(Type.LIST_OPEN, Position.AFTER);
+	}
+
+	private void closeList(String fieldName, boolean inList) {
+		level--;
+		indent(Type.LIST_CLOSE, Position.BEFORE);
+		writeListClose(fieldName, level, inList);
+		indent(Type.LIST_CLOSE, Position.AFTER);
+	}
+
+	/**
+	 * For anyone reading through this code and curious about the organization
+	 * of this class, here is an outline.
+	 * <p/>
+	 * This class more or less follows the requirements outlined by the JSON
+	 * format; more specifically, that any value can be an array structure, an
+	 * object structure or a simple name/value pair. These values can be pulled
+	 * from any array or object themselves.
+	 * <p/>
+	 * Given that "anything can contain anything else" structure,
+	 * writeDispatcher is the central method that all other "discovery" methods
+	 * call into with their array elements or reflected field values and this
+	 * method provides all the logic necessary to decide how that object should
+	 * be handled.
+	 * <p/>
+	 * This method will dispatch to 3 primary methods: writeObject,
+	 * writeArray/List/Collection or writeValue if the value that comes in is an
+	 * object, some list structure or a simple name/value respectively.
+	 * <p/>
+	 * Simple Gen only supports recursing on objects annotated with
+	 * {@link Recursable} so any other object (that isn't a list structure or
+	 * simple data type) will have its toString() value written as a String with
+	 * a call to writeValue.
+	 * 
+	 * @param name
+	 *            The name of the object, field or list.
+	 * @param type
+	 *            The type of the value.
+	 * @param encoding
+	 *            The Encode annotation used on the field, if there was one.
+	 * @param value
+	 *            The actual value of the object, field or list.
+	 * @param listItem
+	 *            Indicates if the item is directly contained with a list, some
+	 *            formats like JSON, will change how they are rendered if this
+	 *            is true.
+	 */
+	private void writeDispatcher(String name, Class<?> type, Encode encoding,
+			Object value, boolean listItem) {
+		if (type.isAnnotationPresent(Recursable.class))
+			writeObject(name, type, value, listItem);
+		else if (type.isArray())
+			writeArray(name, type, value, listItem);
+		else if (List.class.isAssignableFrom(type))
+			writeList(name, type, (List<?>) value, listItem);
+		else if (Collection.class.isAssignableFrom(type))
+			writeCollection(name, type, (Collection<?>) value, listItem);
+		else
+			writeValue(name, type, encoding, value, listItem);
+	}
+
+	private void writeObject(String name, Class<?> type, Object object,
+			boolean listItem) {
+		openObject(name, listItem);
+
+		// Check if we already have the fields cached for this class.
+		Field[] fields = fieldCache.get(type);
+
+		// Check if the fields for this type were already cached.
+		if (fields == null) {
+			// Get all public, inherited fields for the class.
+			fields = type.getFields();
+
+			// Cache the fields for this type incase we parse it again later.
+			fieldCache.put(type, fields);
+		}
+
+		// Process the object's fields and values.
+		for (int i = 0, lastSepIdx = (fields.length - 1); i < fields.length; i++) {
+			Field field = fields[i];
+
+			int mods = field.getModifiers();
+
+			// Skip static, transient or synthetic fields.
+			if (Modifier.isStatic(mods) || Modifier.isTransient(mods)
+					|| field.isSynthetic())
+				continue;
+
+			Object fieldValue = null;
+
+			try {
+				// Get the field's value.
+				fieldValue = field.get(object);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			/*
+			 * Either our get(value) call failed above or this field has no
+			 * value associated with it.
+			 * 
+			 * Skip fields with null values per typical generation library
+			 * behavior in other well-deployed projects (e.g. GSON). This also
+			 * makes the following generation code cleaner.
+			 */
+			if (fieldValue == null)
+				continue;
+
+			/*
+			 * Dispatch the writing of the field and its value. Also reset the
+			 * "inList" state to false, because even if this parent object was
+			 * in a list, the field that we are recursing on is in the scope of
+			 * an object and no longer directly in the list.
+			 */
+			writeDispatcher(field.getName(), field.getType(),
+					field.getAnnotation(Encode.class), fieldValue, false);
+
+			// Append the list separator (if there is one) between items.
+			if (i < lastSepIdx)
+				writeListSeparator();
+		}
+
+		closeObject(name, listItem);
+	}
+
+	private void writeArray(String name, Class<?> type, Object array,
+			boolean listItem) {
+		openList(name, listItem);
+
+		// Check if we have any work to do on the list.
+		if (array != null) {
+			int length = Array.getLength(array);
+
+			for (int i = 0, lastSepIdx = length - 1; i < length; i++) {
+				Object item = Array.get(array, i);
+				Class<?> itemType = item.getClass();
+
+				writeDispatcher(typeToName(itemType), itemType, null, item,
+						true);
+
+				if (i < lastSepIdx) {
+					writeListSeparator();
+					indent(Type.LIST_ITEM, Position.AFTER);
+				}
+			}
+		}
+
+		closeList(name, listItem);
+	}
+
+	private void writeList(String name, Class<?> type, List<?> list,
+			boolean listItem) {
+		openList(name, listItem);
+
+		// Check if we have any work to do on the list.
+		if (list != null && !list.isEmpty()) {
+			for (int i = 0, size = list.size(), lastSepIdx = size - 1; i < size; i++) {
+				Object item = list.get(i);
+				Class<?> itemType = item.getClass();
+
+				writeDispatcher(typeToName(itemType), itemType, null, item,
+						true);
+
+				if (i < lastSepIdx) {
+					writeListSeparator();
+					indent(Type.LIST_ITEM, Position.AFTER);
+				}
+			}
+		}
+
+		closeList(name, listItem);
+	}
+
+	private void writeCollection(String name, Class<?> type,
+			Collection<?> collection, boolean listItem) {
+		openList(name, listItem);
+
+		if (collection != null) {
+			Iterator<?> elements = collection.iterator();
+
+			while (elements.hasNext()) {
+				Object item = elements.next();
+				Class<?> itemType = item.getClass();
+
+				writeDispatcher(typeToName(itemType), itemType, null, item,
+						true);
+
+				if (elements.hasNext()) {
+					writeListSeparator();
+					indent(Type.LIST_ITEM, Position.AFTER);
+				}
+			}
+		}
+
+		closeList(name, listItem);
+	}
+
+	private void writeValue(String name, Class<?> type, Encode encoding,
+			Object value, boolean listItem) {
+		/*
+		 * For primitive field types, the type returned from field.getType() is
+		 * an empty stub Class with a name representing the primitive type and
+		 * nothing else.
+		 * 
+		 * Calling fieldValue.getClass() returns the actual wrapper class of the
+		 * primitive type which is needed by writeValue to accurately decide
+		 * which write method to call.
+		 */
+		if (type.isPrimitive() && value != null)
+			type = value.getClass();
+
+		indent(Type.VALUE, Position.BEFORE);
+
+		if (Boolean.class.isAssignableFrom(type))
+			writeBoolean(name, (Boolean) value, level, listItem);
+		else if (Number.class.isAssignableFrom(type))
+			writeNumber(name, (Number) value, level, listItem);
+		else {
+			String text = null;
+
+			if (value instanceof String) {
+				text = (String) value;
+
+				if (encoding != null) {
+					switch (encoding.value()) {
+					case URL:
+						try {
+							text = URLEncoder.encode(text, "UTF-8");
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						break;
+
+					case BASE64:
+						try {
+							text = Base64.encodeBytes(text.getBytes("UTF-8"));
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						break;
+
+					case URL_SAFE_BASE64:
+						try {
+							text = Base64.encodeBytes(text.getBytes("UTF-8"),
+									Base64.URL_SAFE);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						break;
+					}
+				}
+			} else
+				text = value.toString();
+
+			writeString(name, text, level, listItem);
+		}
+
+		indent(Type.VALUE, Position.AFTER);
 	}
 }

@@ -19,20 +19,20 @@ package com.thebuzzmedia.simple.generator;
  * Class used to implement the default generator stubs for the XML file format.
  * <p/>
  * Most all of the complex reflection and generation logic is implemented by
- * {@link AbstractGenerator} and subclasses only need to add simple stub logic
- * used to generate the correct format according to the specification being
- * followed.
+ * {@link AbstractGeneratorOLD} and subclasses only need to add simple stub
+ * logic used to generate the correct format according to the specification
+ * being followed.
  * 
  * @author Riyad Kalla (software@thebuzzmedia.com)
  * @since 1.1
  */
 public class XMLGenerator extends AbstractGenerator {
 	public XMLGenerator() {
-		super(CompactIndenter.INSTANCE);
+		super();
 	}
 
 	public XMLGenerator(IIndenter indenter) throws IllegalArgumentException {
-		super(indenter, DEFAULT_INITIAL_BUFFER_SIZE);
+		super(indenter);
 	}
 
 	public XMLGenerator(IIndenter indenter, int initialBufferSize)
@@ -68,27 +68,15 @@ public class XMLGenerator extends AbstractGenerator {
 	@Override
 	protected void writeBoolean(String fieldName, Boolean value, int level,
 			boolean inList) {
-		append('<').append(fieldName).append('>');
-
-		if (value != null) {
-			if (value.booleanValue())
-				append(BOOLEAN_TRUE);
-			else
-				append(BOOLEAN_FALSE);
-		}
-
-		append("</").append(fieldName).append('>');
+		append('<').append(fieldName).append('>').append(value).append("</")
+				.append(fieldName).append('>');
 	}
 
 	@Override
 	protected void writeNumber(String fieldName, Number value, int level,
 			boolean inList) {
-		append('<').append(fieldName).append('>');
-
-		if (value != null)
-			append(value.toString());
-
-		append("</").append(fieldName).append('>');
+		append('<').append(fieldName).append('>').append(value).append("</")
+				.append(fieldName).append('>');
 	}
 
 	@Override

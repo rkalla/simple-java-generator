@@ -19,9 +19,9 @@ package com.thebuzzmedia.simple.generator;
  * Class used to implement the default generator stubs for the JSON file format.
  * <p/>
  * Most all of the complex reflection and generation logic is implemented by
- * {@link AbstractGeneratorOLD} and subclasses only need to add simple stub
- * logic used to generate the correct format according to the specification
- * being followed.
+ * {@link AbstractGenerator} and subclasses only need to add simple stub logic
+ * used to generate the correct format according to the specification being
+ * followed.
  * 
  * @author Riyad Kalla (software@thebuzzmedia.com)
  * @since 1.1

@@ -5,12 +5,17 @@ import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-// Added for JAXB comparison benchmark.
+import com.thebuzzmedia.simple.generator.annotation.Encode;
+import com.thebuzzmedia.simple.generator.annotation.Encode.Type;
+import com.thebuzzmedia.simple.generator.annotation.Recursable;
+
+@Recursable
 @XmlRootElement
-public class Library implements IRecursable {
+public class Library {
 	public String name;
 	public String address;
 	public List<Book> books;
+	public int[] ids = new int[] {1, 5, 7, 9, 13};
 
 	public Library() {
 		// no-arg default constructor.
@@ -22,7 +27,8 @@ public class Library implements IRecursable {
 		this.books = Arrays.asList(books);
 	}
 
-	public static class Book implements IRecursable {
+	@Recursable
+	public static class Book {
 		public Boolean checkedOut;
 		public String title;
 		public String isbn;
@@ -47,10 +53,13 @@ public class Library implements IRecursable {
 			this.authors = Arrays.asList(authors);
 		}
 
-		public static class Author implements IRecursable {
+		@Recursable
+		public static class Author {
 			public String firstName;
 			public String lastName;
 			public Long dob;
+
+			@Encode(Type.URL)
 			public String amazonURL;
 
 			public Author() {

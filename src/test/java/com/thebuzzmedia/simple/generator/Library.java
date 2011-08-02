@@ -5,8 +5,6 @@ import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.thebuzzmedia.simple.generator.annotation.Encode;
-import com.thebuzzmedia.simple.generator.annotation.Encode.Type;
 import com.thebuzzmedia.simple.generator.annotation.Recursable;
 
 @Recursable
@@ -59,7 +57,9 @@ public class Library {
 			public String lastName;
 			public Long dob;
 
-			@Encode(Type.URL)
+			// Commented out to make Benchmark report fair comparison. The other
+			// frameworks are not doing encoding on this value.
+//			@Encode(Type.URL)
 			public String amazonURL;
 
 			public Author() {

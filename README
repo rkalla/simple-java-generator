@@ -29,15 +29,6 @@ Changelog
 	* AbstractGenerator was rewritten to allow more robust value handling and
 	cleaner execution with less cycles.
 	
-	* The introduction of annotation processing cut the raw performance of the
-	library in half (even with guard-blocks to avoid calling into the 
-	AnnotationProcessor), but the overall speed is still 3x faster than other
-	popular libraries like GSON.
-	
-	The usability of the library was boosted quite a bit, and performance is still
-	in the range of 15 generation ops/millisecond or almost 28,000 ops/sec from
-	the Benchmark class.
-
 1.2
 	* Changed IGenerate.generate return type from a StringBuilder to an 
 	IInput<char[], char[]>. Allows much more optimized interaction with the
@@ -97,16 +88,16 @@ Object->XML text generation; namely Gson for JSON and JAXB from Java 6 for XML.
 ==== Benchmarking 50000 iterations ====
 
 [JSON]
-	 Gson, Formatted... 7886 ms (7.886 secs - 6340 ops/sec)
-	 Gson, Compact... 5199 ms (5.199 secs - 9617 ops/sec)
-	 Simple Gen, Formatted... 2789 ms (2.789 secs - 17927 ops/sec)
-	 Simple Gen, Compact... 1800 ms (1.8 secs - 27777 ops/sec)
+	 Gson, Formatted... 7657 ms (7.657 secs - 6529 ops/sec)
+	 Gson, Compact... 5201 ms (5.201 secs - 9613 ops/sec)
+	 Simple Gen, Formatted... 1788 ms (1.788 secs - 27964 ops/sec)
+	 Simple Gen, Compact... 876 ms (0.876 secs - 57077 ops/sec)
 
 [XML]
-	 JAXB, Formatted... 1565 ms (1.565 secs - 31948 ops/sec)
-	 JAXB, Compact... 1014 ms (1.014 secs - 49309 ops/sec)
-	 Simple Gen, Formatted... 3401 ms (3.401 secs - 14701 ops/sec)
-	 Simple Gen, Compact... 1953 ms (1.953 secs - 25601 ops/sec)
+	 JAXB, Formatted... 1525 ms (1.525 secs - 32786 ops/sec)
+	 JAXB, Compact... 973 ms (0.973 secs - 51387 ops/sec)
+	 Simple Gen, Formatted... 2238 ms (2.238 secs - 22341 ops/sec)
+	 Simple Gen, Compact... 1020 ms (1.02 secs - 49019 ops/sec)
 
 
 Example

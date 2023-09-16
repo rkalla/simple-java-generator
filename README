@@ -151,9 +151,3 @@ Here are some issues you might run into and what you can do to correct it.
 	IRecursable interface. This interface "tags" custom classes as something that
 	SJG should use reflection to recurse into to pull values out of. Without it,
 	you are telling SJG to leave those classes alone.
-		 
-
-Contact
--------
-If you have questions, comments or bug reports for this software please contact
-us at: software@thebuzzmedia.com
